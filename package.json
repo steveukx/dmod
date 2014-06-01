@@ -1,0 +1,28 @@
+{
+  "name": "dmod",
+  "description": "Database backed models",
+  "author": "Steve King <steve@mydev.co>",
+  "contributors": [
+    {
+      "name": "Steve King",
+      "email": "steve@mydev.co"
+    }
+  ],
+  "version": "0.0.1",
+  "main": "./src/unit-test.js",
+  "repository": "git://github.com/steveukx/dmod.git",
+  "bin": {},
+  "engines": {
+    "node": ">= 0.6.0"
+  },
+  "dependencies": {
+    "readdir": "0.0.12",
+    "q": "^1.0.1"
+  },
+  "devDependencies": {
+    "unit-test": "0.0.9"
+  },
+  "scripts": {
+    "test": "node test/runner.js"
+  }
+}
