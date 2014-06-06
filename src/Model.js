@@ -19,9 +19,7 @@
         this._name = name;
         this._associations = [];
         this._fields = {};
-        this._columnsStore = new ColumnsStore;
-
-        this.define = this.define.bind(this);
+        this.columnsStore = new ColumnsStore;
     }
 
     /**
@@ -40,6 +38,12 @@
     Model.prototype._associations = null;
 
     /**
+     * @type {ColumnsStore} The set of columns (fields) in this Model
+     * @name {DMod.Model#columnsStore}
+     */
+    Model.prototype.columnsStore = null;
+
+    /**
      * Creates a field with any arbitrary configuration
      *
      * @param {String} name
@@ -47,7 +51,7 @@
      */
     Model.prototype.field = function(name, config) {
         config = config || {};
-        var columnDefinition = this._columnsStore.add(new ColumnDefinition(name));
+        var columnDefinition = this.columnsStore.add(new ColumnDefinition(name));
 
         for (var property in config) {
             columnDefinition[property] = config[property];
@@ -125,7 +129,7 @@
      * @returns {Model}
      */
     Model.prototype.associate = function(models) {
-        this._columnsStore.forEach(function (columnDefinition) {
+        this.columnsStore.forEach(function (columnDefinition) {
             if (columnDefinition.association) {
                 columnDefinition.association.model(models[columnDefinition.association.foreignTable]);
             }
@@ -134,21 +138,11 @@
     };
 
     /**
-     * Defines the table for the sequelize ORM.
+     * Name of the model for use when describing it in a data store.
      *
-     * @param {Object} database
-     * @param {Object} DataTypes
+     * @type {string} tableName
+     * @name DMod.Model#tableName
      */
-    Model.prototype.define = function(database, DataTypes) {
-        this._database = database;
-        this._Instance = require('./util/InstanceBuilder').fromColumnsStore(this._columnsStore);
-
-        database.run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
-            this.tableName, this._columnsStore.toSql()));
-
-        return this;
-    };
-
     Object.defineProperties(Model.prototype, {
         tableName: {
             get: function () {
@@ -171,7 +165,7 @@
      */
     Model.prototype.by = function(search) {
         var tokens = [];
-        var columns = this._columnsStore;
+        var columns = this.columnsStore;
         var criteria = Object.keys(search).map(function (fieldName) {
             if (!columns.exists(fieldName)) {
                 throw new ReferenceError("Unknown field in query: " + fieldName);

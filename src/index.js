@@ -9,7 +9,8 @@
      * @constructor
      * @name DMod
      */
-    function DMod() {
+    function DMod(dataAdapter) {
+        this._adapter = dataAdapter;
         this._models = {};
     }
 
@@ -21,6 +22,7 @@
     DMod.prototype.register = function() {
         [].forEach.call(arguments, function (table) {
             this._models[table.tableName] = table;
+            this._adapter.create(table);
         }, this);
         Object.keys(this._models).forEach(function (tableName) {
             this[tableName].associate(this);
@@ -53,7 +55,7 @@
         return table;
     };
 
-    DMod.Model = BaseModel;
+    DMod.Model = require('./Model');
     DMod.adapters = require('./adapters/index');
 
 }());
