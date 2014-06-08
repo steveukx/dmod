@@ -17,7 +17,7 @@
      */
     function SQLite (store) {
         this._database = new Database(store || ':memory:');
-        this._database.run("PRAGMA foreign_keys = ON");
+        this._run("PRAGMA foreign_keys = ON");
     }
 
     /**
@@ -25,8 +25,32 @@
      * @param {DMod.Model} model
      */
     SQLite.prototype.create = function (model) {
-        this._database.run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
+        this._run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
             model.tableName, model.columnsStore.toSql()));
+    };
+
+    /**
+     * Runs a query. If the last argument is an array, it will be used as variable data to be merged into the query
+     * by SQLite. Any arguments after the query string itself are used as sprintf arguments to be merged into the string
+     * before it is sent to SQLite.
+     *
+     * @param {string} query
+     * @private
+     */
+    SQLite.prototype._run = function(query) {
+        var queryParams = [];
+        var args = [].slice.call(arguments);
+
+        if (args.length > 1 && Array.isArray(args[args.length - 1])) {
+            queryParams = args.pop();
+        }
+
+        if (args.length > 1) {
+            query = merge.apply(this, args);
+        }
+
+        console.log(query, ';');
+        this._database.run(query, queryParams);
     };
 
 }());

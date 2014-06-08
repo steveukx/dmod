@@ -24,9 +24,11 @@
             this._models[table.tableName] = table;
             this._adapter.create(table);
         }, this);
+
         Object.keys(this._models).forEach(function (tableName) {
             this[tableName].associate(this);
         }, this._models);
+
         return this;
     };
 
