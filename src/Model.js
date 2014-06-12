@@ -89,6 +89,25 @@
     };
 
     /**
+     * Adds a unique constraint across all named fields supplied as varargs.
+     * @returns {Model}
+     */
+    Model.prototype.uniqueConstraint = function() {
+        var group = [].join.call(arguments, "_").replace(/[^a-zA-Z0-9]/g, '');
+        [].forEach.call(arguments, function (fieldName) {
+            var field = this.columnsStore.get(fieldName);
+            if (!field) {
+                throw "Unable to add a unique constraint to field " + fieldName + " - it is not yet in this Model";
+            }
+            if (field.unique) {
+                throw "Unable to add a unique constraint to field " + fieldName + " - it is already constrained as " + field.unique;
+            }
+            field.unique = group;
+        }, this);
+        return this;
+    };
+
+    /**
      * Creates a named numeric field
      *
      * @param {String} name

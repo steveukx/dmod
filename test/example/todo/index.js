@@ -9,9 +9,10 @@ models.register(
         .field('name'),
 
     DMod.Table('Task').autoIncrementField('id')
-        .uniqueField('name')
+        .field('name')
         .dateTimeField('completed')
         .dateTimeField('created')
         .dateTimeField('due')
         .hasOne('User')
+        .uniqueConstraint('name', '')
 );

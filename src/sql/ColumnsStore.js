@@ -31,7 +31,10 @@
      * @returns {ColumnDefinition|null}
      */
     ColumnsStore.prototype.get = function(key) {
-       return this._keys[key] || (!isNaN(key) && this._items[key]) || null;
+        if (this._keys.hasOwnProperty(key)) {
+            return this._items[this._keys[key]];
+        }
+        return (!isNaN(key) && this._items[key]) || null;
     };
 
     /**
@@ -41,7 +44,7 @@
      */
     ColumnsStore.prototype.add = function(column) {
         if (!this.exists(column.key)) {
-            this._keys[column.key] = this._items.push(column);
+            this._keys[column.key] = this._items.push(column) - 1;
         }
         else {
             throw "Duplicate column definition";
