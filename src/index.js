@@ -23,6 +23,8 @@
         [].forEach.call(arguments, function (table) {
             this._models[table.tableName] = table;
             this._adapter.create(table);
+
+            this['create' + table.name] = this.create.bind(this, table);
         }, this);
 
         Object.keys(this._models).forEach(function (tableName) {
@@ -30,6 +32,22 @@
         }, this._models);
 
         return this;
+    };
+
+    /**
+     * Creates an instance of the supplied model, optionally with the data provided. When the data includes a value
+     * for the primary key field, it is assumed that changes in the record should update in the database (duplicates
+     * will be overwrite existing records).
+     *
+     * When no data (or no data for the primary key field) is supplied, a new record is created by saving the instance,
+     * and a new ID will be generated.
+     *
+     * @param {DMod.Model} model
+     * @param {Object} [withData]
+     * @return {DMod.Instance}
+     */
+    DMod.prototype.create = function(model, withData) {
+        return model.create(withData);
     };
 
     /**

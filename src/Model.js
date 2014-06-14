@@ -4,6 +4,8 @@
     var ForeignKeyConstraint = require('./sql/ForeignKeyConstraint');
     var ColumnDefinition = require('./sql/ColumnDefinition');
     var ColumnsStore = require('./sql/ColumnsStore');
+    var InstanceBuilder = require('./util/InstanceBuilder');
+    var EventEmitter = require('events').EventEmitter;
     var merge = require('util').format;
 
     module.exports = Model;
@@ -16,11 +18,13 @@
      * @constructor
      */
     function Model(name) {
+        EventEmitter.call(this);
         this._name = name;
         this._associations = [];
         this._fields = {};
         this.columnsStore = new ColumnsStore;
     }
+    require('util').inherits(Model, EventEmitter);
 
     /**
      * @type {Database}
@@ -167,6 +171,13 @@
             get: function () {
                 return this._name.toLowerCase().replace(/s$/, '') + 's';
             }
+        },
+        name: {
+            get: function () {
+                return this._name.toLowerCase().replace(/^./, function (char) {
+                    return char.toUpperCase();
+                });
+            }
         }
     });
 
@@ -204,40 +215,14 @@
     };
 
     Model.prototype.create = function(data) {
-
-        return this._Instance(data || {});
-
-
-
-        var fields = Object.keys(this._fields).map(function (field) { return this[field]; }, this._fields);
-        var values = {};
-        var object = {};
-
-        Object.defineProperties(object, fields.reduce(function (properties, field) {
-
-            console.log('Model#create', field);
-            var fieldName = field.key;
-            values[fieldName] = field.hasOwnProperty('defaultValue') ? field.defaultValue : null;
-            properties[fieldName] = {
-                get: function () {
-                    return values[fieldName];
-                },
-                set: function (value) {
-                    values[fieldName] = value;
-                }
-            };
-            return properties;
-        }, {}));
-
-        if (data) {
-            fields.forEach(function (field) {
-                if (data.hasOwnProperty(field.key)) {
-                    object[fieldName] = data[fieldName];
-                }
-            });
+        if (!this._instanceFactory) {
+            this._instanceFactory = new InstanceBuilder(this.columnsStore);
         }
 
-        return object;
+        var model = this;
+        return this._instanceFactory.create(data || {}).on('save', function (changes, onSave) {
+            model.emit('save', this.id, changes, onSave);
+        });
     };
 
 }());

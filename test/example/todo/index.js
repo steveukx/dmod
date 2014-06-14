@@ -14,5 +14,13 @@ models.register(
         .dateTimeField('created')
         .dateTimeField('due')
         .hasOne('User')
-        .uniqueConstraint('name', '')
+        .uniqueConstraint('name', 'user')
 );
+
+var user = models.createUser({
+    username: 'steveukx'
+});
+
+user.name = 'Steve King';
+
+user.save();

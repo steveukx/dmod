@@ -26,7 +26,8 @@
      */
     SQLite.prototype.create = function (model) {
         this._run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
-            model.tableName, model.columnsStore.toSql()));
+            model.tableName,
+            model.columnsStore.toSql()));
     };
 
     /**
