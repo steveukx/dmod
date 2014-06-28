@@ -20,11 +20,13 @@
      * @returns {DMod}
      */
     DMod.prototype.register = function() {
-        [].forEach.call(arguments, function (table) {
-            this._models[table.tableName] = table;
-            this._adapter.create(table);
+        [].forEach.call(arguments, function (model) {
+            this._models[model.tableName] = model;
+            this._adapter.create(model);
 
-            this['create' + table.name] = this.create.bind(this, table);
+            this['create' + model.name] = this.create.bind(this, model);
+
+            model.on('save', this._adapter.saveRecord.bind(this._adapter, model));
         }, this);
 
         Object.keys(this._models).forEach(function (tableName) {

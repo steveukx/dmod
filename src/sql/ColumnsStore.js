@@ -26,11 +26,16 @@
 
     /**
      * Gets a ColumnDefinition based on its name. If not found, and `key` is supplied as a number, will attempt to
-     * fetch the ColumnDefinition by index instead.
-     * @param {string|number} key
-     * @returns {ColumnDefinition|null}
+     * fetch the ColumnDefinition by index instead. When no argument is supplied, the complete array of fields is
+     * returned.
+     * @param {string|number} [key]
+     * @returns {ColumnDefinition|ColumnDefinition[]|null}
      */
     ColumnsStore.prototype.get = function(key) {
+        if (!arguments.length) {
+            return this._items.slice(0);
+        }
+
         if (this._keys.hasOwnProperty(key)) {
             return this._items[this._keys[key]];
         }

@@ -42,6 +42,11 @@
     Model.prototype._associations = null;
 
     /**
+     * @type {string[]} The array of field key names to use to generate a unique key for a record in this Model
+     */
+    Model.prototype._keyField = null;
+
+    /**
      * @type {ColumnsStore} The set of columns (fields) in this Model
      * @name {DMod.Model#columnsStore}
      */
@@ -59,6 +64,10 @@
 
         for (var property in config) {
             columnDefinition[property] = config[property];
+        }
+
+        if (columnDefinition.autoIncrement) {
+            this._keyField = [columnDefinition.key];
         }
 
         return this;
@@ -221,8 +230,24 @@
 
         var model = this;
         return this._instanceFactory.create(data || {}).on('save', function (changes, onSave) {
-            model.emit('save', this.id, changes, onSave);
+            model.emit('save', this, changes, onSave);
         });
+    };
+
+    /**
+     * Gets the array of field names to use to generate a unique key for a model of this type
+     * @returns {string[]}
+     */
+    Model.prototype.getUniqueFields = function() {
+        if (!this._keyField) {
+            this._keyField = this.columnsStore.get().filter(function (columnDefinition) {
+                return columnDefinition.unique;
+            }).map(function (columnDefinition) {
+                return columnDefinition.key;
+            });
+        }
+
+        return this._keyField;
     };
 
 }());
