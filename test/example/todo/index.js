@@ -17,10 +17,16 @@ models.register(
         .uniqueConstraint('name', 'user')
 );
 
-var user = models.createUser({
-    username: 'steveukx'
+models.on('ready', function () {
+    var user = models.createUser({
+        username: 'steveukx'
+    });
+
+    user.name = 'Steve King';
+
+    user.save();
+
+    var task = models.createTask({
+
+    })
 });
-
-user.name = 'Steve King';
-
-user.save();

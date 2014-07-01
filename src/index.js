@@ -4,15 +4,30 @@
 
     module.exports = DMod;
 
+    var Q = require('q');
+    var EventEmitter = require('events').EventEmitter;
+
     /**
      *
      * @constructor
      * @name DMod
      */
     function DMod(dataAdapter) {
+        EventEmitter.call(this);
+
         this._adapter = dataAdapter;
         this._models = {};
     }
+    require('util').inherits(DMod, EventEmitter);
+
+    /**
+     * Adds a function handler to be called when any models currently being registered have finished being set up.
+     * @param {Function} fn
+     * @returns {DMod}
+     */
+    DMod.prototype.onReady = function(fn) {
+        return this.on('ready', fn);
+    };
 
     /**
      * Registers any number of tables supplied as instances of `DMod.Model`.
@@ -20,20 +35,33 @@
      * @returns {DMod}
      */
     DMod.prototype.register = function() {
-        [].forEach.call(arguments, function (model) {
-            this._models[model.tableName] = model;
-            this._adapter.create(model);
+        var promises = [].map.call(arguments, this._registerModel, this);
 
-            this['create' + model.name] = this.create.bind(this, model);
-
-            model.on('save', this._adapter.saveRecord.bind(this._adapter, model));
-        }, this);
+        Q.all(promises).then(function () {
+            this.emit('ready');
+        }.bind(this));
 
         Object.keys(this._models).forEach(function (tableName) {
             this[tableName].associate(this);
         }, this._models);
 
         return this;
+    };
+
+    /**
+     * Registers the supplied model, returns the same instance with any modifications made by the persistence adapter.
+     *
+     * @param {DMod.Model} model
+     * @returns {DMod.Model}
+     */
+    DMod.prototype._registerModel = function(model) {
+        this._models[model.tableName] = model;
+        this['create' + model.name] = this.create.bind(this, model);
+
+        model.on('create', this._adapter.createRecord.bind(this._adapter, model));
+        model.on('update', this._adapter.updateRecord.bind(this._adapter, model));
+
+        return this._adapter.create(model);
     };
 
     /**

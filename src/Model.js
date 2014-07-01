@@ -223,6 +223,13 @@
         this._database.run(merge('SELECT * FROM `%s` where %s', this.tableName, criteria || 1), tokens);
     };
 
+    /**
+     * Creates a new instance of this model (optionally with the supplied data). Saving a model created in this way
+     * is deemed to always be inserting a new model to the store.
+     *
+     * @param {Object} [data]
+     * @returns {Object}
+     */
     Model.prototype.create = function(data) {
         if (!this._instanceFactory) {
             this._instanceFactory = new InstanceBuilder(this.columnsStore);
@@ -230,7 +237,7 @@
 
         var model = this;
         return this._instanceFactory.create(data || {}).on('save', function (changes, onSave) {
-            model.emit('save', this, changes, onSave);
+            model.emit('create', this, changes, onSave);
         });
     };
 

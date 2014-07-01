@@ -26,48 +26,90 @@
      * @param {DMod.Model} model
      */
     SQLite.prototype.create = function (model) {
-        this._run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
-            model.tableName,
-            model.columnsStore.toSql()));
+        this._database.serialize(function () {
+            this._run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
+                model.tableName,
+                model.columnsStore.toSql()));
+        }.bind(this));
     };
 
     /**
-     * Persists the changes to the
+     * Persists changes to a record to the database, assumed to always be an update request as the model was created
+     * from the result of a query rather than an arbitrary creation.
+     *
      * @param {DMod.Model} model
      * @param {Object} record
      * @param {Object} changes
      * @param {Function} [onSave]
      */
-    SQLite.prototype.saveRecord = function(model, record, changes, onSave) {
-        var query;
+    SQLite.prototype.updateRecord = function(model, record, changes, onSave) {
+        return this._update(record, changes, model.tableName, model.columnsStore, model.getUniqueFields()).then(onSave);
+    };
+
+    /**
+     * Handles the update of an existing record.
+     *
+     * @param record
+     * @param changes
+     * @param tableName
+     * @param columns
+     * @param uniqueFields
+     * @returns {Q.Promise}
+     */
+    SQLite.prototype._update = function(record, changes, tableName, columns, uniqueFields) {
         var params = [];
-        var uniqueField = model.getUniqueFields();
-        var isChange = uniqueField.some(function (field) {
-            return changes.hasOwnProperty(field);
+        var updates = Object.keys(changes).map(function (fieldName) {
+            params.push(changes[fieldName]);
+            return merge('`%s` = ?', fieldName);
         });
-        var changedFields = Object.keys(changes).filter(function (fieldName) {
-            return model.columnsStore.exists(fieldName);
+        var key = uniqueFields.map(function (field) {
+            params.push(record.original(field.key));
+            return merge('`%s` = ?', field.key);
         });
 
-        if (isChange) {
-            query = 'update `' + model.tableName + '` set ' + changedFields.map(function (fieldName) {
-                            params.push(changes[fieldName]);
-                            return fieldName + ' = ?';
-                        }).join(', ') + ' WHERE ' + uniqueField.map(function (uniqueField) {
-                            // TODO
-                            return '1'
-                        }).join(' AND ');
-        }
-        else {
-            query = 'insert into `' + model.tableName + '` (`' + changedFields.join('`, `') + '`) VALUES (' +
-                changedFields.map(function (fieldName) {
-                    params.push(changes[fieldName]);
-                    return '?';
-                }).join(', ') + ')';
-        }
+        var query = merge('update `%s` set %s WHERE %s', tableName, updates.join(', '), key.join(' AND '));
+        return this._run(query, params, function (err) {
+            console.log(arguments)
+        });
+    };
 
-        console.log(query, params)
-        this._run(query, params, function (err, res) {
+    /**
+     * Persists a record to the database, assumed to always be an insert request as the original model was created
+     * arbitrarily rather than being created from a query.
+     *
+     * @param {DMod.Model} model
+     * @param {Object} record
+     * @param {Object} changes
+     * @param {Function} [onSave]
+     */
+    SQLite.prototype.createRecord = function(model, record, changes, onSave) {
+        return this._insert(record, model.tableName, model.columnsStore.get()).then(onSave);
+    };
+
+    /**
+     * Handles the insertion of a record.
+     *
+     * @param record
+     * @param tableName
+     * @param columns
+     * @returns {Q.Promise}
+     */
+    SQLite.prototype._insert = function(record, tableName, columns) {
+        var params = [];
+        var placeHolders = [];
+
+        var valueFields = columns.filter(function (column) {
+            return record.hasOwnProperty(column.key) && record[column.key] !== undefined;
+        }).map(function (column) {
+            params.push(record[column.key]);
+            placeHolders.push('?');
+            return column.key;
+        });
+
+        var query = merge('INSERT INTO `%s` (`%s`) VALUES (%s)',
+            tableName, valueFields.join('`, `'), placeHolders.join());
+
+        return this._run(query, params, function (err) {
             console.log(arguments)
         });
     };
@@ -78,18 +120,20 @@
      * before it is sent to SQLite.
      *
      * @param {string} query
-     * @private
+     * @return {Q.Promise}
      */
     SQLite.prototype._run = function(query) {
-
-//        TODO: include a pending queries count, on zero fire event
-//        TODO: that says queries done, use that to decide when to start running queries
-//        TODO: from the DMod wrapper
-
         var queryParams = [];
         var args = [].slice.call(arguments);
         var defer = Q.defer();
+        var onDone;
 
+        // optionally support a trailing onDone handler
+        if (args.length > 1 && typeof args[args.length - 1] === "function") {
+            onDone = args.pop();
+        }
+
+        // optionally support a trailing array of merge params
         if (args.length > 1 && Array.isArray(args[args.length - 1])) {
             queryParams = args.pop();
         }
@@ -98,9 +142,13 @@
             query = merge.apply(this, args);
         }
 
-        console.log(query, ';');
+        console.log('%s;', query);
 
         this._database.run(query, queryParams, function (err) {
+            if (onDone) {
+                onDone(err);
+            }
+
             if (err) {
                 defer.reject(err);
             }
@@ -110,6 +158,31 @@
         });
 
         return defer.promise;
+    };
+
+    /**
+     *
+     * @param {string} query
+     * @param {string[]} params
+     * @param {Function} [then]
+     * @returns {Q.promise}
+     */
+    SQLite.prototype._one = function(query, params, then) {
+        var deferred = Q.defer();
+        if (typeof then === "function") {
+            deferred.promise.then(then);
+        }
+
+        this._database.query(query, params || [], function (err, result) {
+            if (err) {
+                deferred.reject(err);
+            }
+            else {
+                deferred.resolve(result || null);
+            }
+        });
+
+        return deferred.promise;
     };
 
 }());
