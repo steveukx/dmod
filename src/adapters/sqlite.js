@@ -63,8 +63,8 @@
             return merge('`%s` = ?', fieldName);
         });
         var key = uniqueFields.map(function (field) {
-            params.push(record.original(field.key));
-            return merge('`%s` = ?', field.key);
+            params.push(record.originalValue(field));
+            return merge('`%s` = ?', field);
         });
 
         var query = merge('update `%s` set %s WHERE %s', tableName, updates.join(', '), key.join(' AND '));
@@ -95,6 +95,7 @@
      * @returns {Q.Promise}
      */
     SQLite.prototype._insert = function(record, tableName, columns) {
+        var deferred = Q.defer();
         var params = [];
         var placeHolders = [];
 
@@ -109,9 +110,25 @@
         var query = merge('INSERT INTO `%s` (`%s`) VALUES (%s)',
             tableName, valueFields.join('`, `'), placeHolders.join());
 
-        return this._run(query, params, function (err) {
-            console.log(arguments)
+        var db = this._database;
+        db.serialize(function() {
+            db.run('BEGIN TRANSACTION');
+            db.run(query, params);
+
+            db.get('SELECT last_insert_rowid() as id', function (err, row) {
+                record.commitChanges(record.id = row.id);
+                db.run('END TRANSACTION');
+
+                if (err) {
+                    deferred.reject(err);
+                }
+                else {
+                    deferred.resolve(record);
+                }
+            });
         });
+
+        return deferred.promise;
     };
 
     /**

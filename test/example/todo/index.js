@@ -21,10 +21,12 @@ models.on('ready', function () {
     var user = models.createUser({
         username: 'steveukx'
     });
-
     user.name = 'Steve King';
+    user.save(function (user) {
+        user.name = 'Bob';
+        user.save();
+    });
 
-    user.save();
 
     var task = models.createTask({
 

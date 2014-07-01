@@ -236,8 +236,12 @@
         }
 
         var model = this;
+        var event = 'create';
+
         return this._instanceFactory.create(data || {}).on('save', function (changes, onSave) {
-            model.emit('create', this, changes, onSave);
+            model.emit(event, this, changes, onSave);
+            this.commitChanges();
+            event = 'update';
         });
     };
 

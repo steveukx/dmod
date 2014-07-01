@@ -43,6 +43,32 @@
         return this;
     };
 
+    /**
+     * Gets the original value of a field before any modifications were made to it.
+     * @param {string} fieldName
+     */
+    InstanceBuilder.Instance.prototype.originalValue = function(fieldName) {
+        return this.__original.hasOwnProperty(fieldName) ? this.__original[fieldName] : this.__values[fieldName];
+    };
+
+    /**
+     * Marks all changes as having been set in the persistence store
+     */
+    InstanceBuilder.Instance.prototype.commitChanges = function() {
+        var originalValues = this.__original;
+        var changedValues = this.__changed;
+
+        Object.keys(originalValues).forEach(function (key) {
+            delete originalValues[key];
+        });
+
+        Object.keys(changedValues).forEach(function (key) {
+            delete changedValues[key];
+        });
+
+        return this;
+    };
+
     InstanceBuilder.prototype.create = function(values) {
         var instance = Object.create(Object.create(new InstanceBuilder.Instance(), {
             __values: {
@@ -51,6 +77,11 @@
                 value: {}
             },
             __changed: {
+                enumerable: false,
+                configurable: false,
+                value: {}
+            },
+            __original: {
                 enumerable: false,
                 configurable: false,
                 value: {}
@@ -79,14 +110,18 @@
         var fieldsProto = {};
 
         columnStore.forEach(function (column) {
-            Object.defineProperty(fieldsProto, column.key, {
+            var key = column.key;
+            Object.defineProperty(fieldsProto, key, {
                 get: function () {
-                    return this.__values[column.key];
+                    return this.__values[key];
                 },
                 set: function (value) {
-                    if (this.__values[column.key] !== value) {
-                        this.__values[column.key] = value;
-                        this.__changed.indexOf(column.key) < 0 && this.__changed.push(column.key);
+                    if (!this.__original.hasOwnProperty(key)) {
+                        this.__original[key] = this.__values[key];
+                    }
+                    if (this.__values[key] !== value) {
+                        this.__values[key] = value;
+                        this.__changed.indexOf(key) < 0 && this.__changed.push(key);
                     }
                 }
             });
