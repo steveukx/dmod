@@ -18,17 +18,22 @@ models.register(
 );
 
 models.on('ready', function () {
+
+    var createTaskFor = function (user) {
+        var task = models.createTask({
+            user: user,
+            name: "my first task"
+        });
+
+        task.save(function () {
+            console.log(JSON.stringify(task));
+        });
+    };
+
     var user = models.createUser({
-        username: 'steveukx'
+        username: 'steveukx',
+        name: 'Steve King'
     });
-    user.name = 'Steve King';
-    user.save(function (user) {
-        user.name = 'Bob';
-        user.save();
-    });
+    user.save(createTaskFor);
 
-
-    var task = models.createTask({
-
-    })
 });

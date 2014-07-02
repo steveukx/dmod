@@ -38,9 +38,24 @@
     };
     require('util').inherits(InstanceBuilder.Instance, EventEmitter);
 
+    /**
+     * Saves any changes made to the current model instance, the onSave handler will be called when persisting
+     * the changes is complete.
+     *
+     * @param {Function} onSave
+     * @returns {InstanceBuilder.Instance}
+     */
     InstanceBuilder.Instance.prototype.save = function(onSave) {
         this.emit('save', this.__changed, onSave);
         return this;
+    };
+
+    /**
+     * Returns the raw value object to be serialised as JSON
+     * @returns {Object}
+     */
+    InstanceBuilder.Instance.prototype.toJSON = function() {
+        return this.__values;
     };
 
     /**

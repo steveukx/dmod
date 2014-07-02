@@ -102,7 +102,12 @@
         var valueFields = columns.filter(function (column) {
             return record.hasOwnProperty(column.key) && record[column.key] !== undefined;
         }).map(function (column) {
-            params.push(record[column.key]);
+            if (column.association && typeof record[column.key] === "object") {
+                params.push(record[column.key].id);
+            }
+            else {
+                params.push(record[column.key]);
+            }
             placeHolders.push('?');
             return column.key;
         });
@@ -111,13 +116,15 @@
             tableName, valueFields.join('`, `'), placeHolders.join());
 
         var db = this._database;
+        var sqlite = this;
+
         db.serialize(function() {
-            db.run('BEGIN TRANSACTION');
-            db.run(query, params);
+            sqlite._run('BEGIN TRANSACTION');
+            sqlite._run(query, params);
 
             db.get('SELECT last_insert_rowid() as id', function (err, row) {
                 record.commitChanges(record.id = row.id);
-                db.run('END TRANSACTION');
+                sqlite._run('END TRANSACTION');
 
                 if (err) {
                     deferred.reject(err);
@@ -160,6 +167,9 @@
         }
 
         console.log('%s;', query);
+        if (queryParams && queryParams.length) {
+            console.log('  > ' + queryParams.join('\n  > '));
+        }
 
         this._database.run(query, queryParams, function (err) {
             if (onDone) {
