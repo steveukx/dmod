@@ -4,7 +4,17 @@
 
     module.exports = InstanceBuilder;
 
+    var Q = require('q');
     var EventEmitter = require('events').EventEmitter;
+    var camelCase = function (input, initialCap) {
+        var output = input.toLowerCase().replace(/[^0-9a-z]+(.)/g, function (_, chr) {
+            return chr.toUpperCase();
+        });
+        if (initialCap) {
+            output = output.charAt(0).toUpperCase() + output.substr(1);
+        }
+        return output;
+    };
 
     /**
      *
@@ -30,6 +40,19 @@
                 configurable: false,
                 enumerable: true
             };
+
+            // populateField() => fetches the associated instance and sets it in this instance
+            if (column.association) {
+                proto['populate' + column.association.foreignTable] = function () {
+                    var deferred = Q.defer();
+                    var self = this;
+                    self.emit('populate', column, function (result) {
+                        self[column.key] = result;
+                        deferred.resolve(self);
+                    });
+                    return deferred.promise;
+                };
+            }
         });
     }
 
@@ -37,6 +60,26 @@
         EventEmitter.call(this);
     };
     require('util').inherits(InstanceBuilder.Instance, EventEmitter);
+
+    /**
+     * Populates any named field associations, resolved with the current instance once all associations are populated.
+     *
+     * @returns {Q.promise}
+     */
+    InstanceBuilder.Instance.prototype.populate = function() {
+        var instance = this;
+        var promises = [].map.call(arguments, function (fieldName) {
+            var populateFn = 'populate' + camelCase(fieldName, true);
+            if (!instance[populateFn]) {
+                throw new ReferenceError("Cannot populate field " + fieldName + ", not an associated field");
+            }
+            return instance[populateFn]();
+        });
+
+        return Q.all(promises).then(function () {
+            return instance;
+        });
+    };
 
     /**
      * Saves any changes made to the current model instance, the onSave handler will be called when persisting
@@ -64,6 +107,19 @@
      */
     InstanceBuilder.Instance.prototype.originalValue = function(fieldName) {
         return this.__original.hasOwnProperty(fieldName) ? this.__original[fieldName] : this.__values[fieldName];
+    };
+
+    /**
+     * Gets a flag showing whether there are pending changes
+     * @returns {boolean}
+     */
+    InstanceBuilder.Instance.prototype.hasChanges = function() {
+        for (var anything in this.__changed) {
+            if (this.__changed.hasOwnProperty(anything)) {
+                return true;
+            }
+        }
+        return false;
     };
 
     /**
