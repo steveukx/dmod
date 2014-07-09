@@ -1,6 +1,7 @@
 
 (function () {
 
+    var Q = require('q');
     var ForeignKeyConstraint = require('./sql/ForeignKeyConstraint');
     var ColumnDefinition = require('./sql/ColumnDefinition');
     var ColumnsStore = require('./sql/ColumnsStore');
@@ -163,7 +164,8 @@
     Model.prototype.associate = function(models) {
         this.columnsStore.forEach(function (columnDefinition) {
             if (columnDefinition.association) {
-                columnDefinition.association.model(models[columnDefinition.association.foreignTable]);
+                columnDefinition.association.model(
+                    models[columnDefinition.association.foreignTable.toLowerCase() + 's']);
             }
         });
         return this;
@@ -201,26 +203,56 @@
     /**
      * Finds any number of items using the given search criteria
      * @param {object} search
+     * @return {Q.promise}
      */
     Model.prototype.by = function(search) {
-        var tokens = [];
+        var model = this;
         var columns = this.columnsStore;
-        var criteria = Object.keys(search).map(function (fieldName) {
+        var criteria = Object.keys(search).reduce(function (criteria, fieldName) {
             if (!columns.exists(fieldName)) {
                 throw new ReferenceError("Unknown field in query: " + fieldName);
             }
 
-            var columnDefinition = columns.get(fieldName);
-            tokens.push(search[fieldName]);
-            if (columnDefinition.association) {
-                return merge('`%s`.`id` = ?', fieldName);
+            criteria[fieldName] = search[fieldName];
+            return criteria;
+        }, {});
+
+        var deferred = Q.defer();
+        this.emit('all', criteria, function (err, res) {
+            if (err) {
+                deferred.reject(err);
             }
             else {
-                return merge('`%s` = ?', fieldName);
+                [].concat(res).map(function (data) {
+                    return model._build(data, Model.UPDATE_EVENT);
+                });
+                deferred.resolve(res);
             }
-        }).join(', ');
+        });
+        return deferred.promise;
+    };
 
-        this._database.run(merge('SELECT * FROM `%s` where %s', this.tableName, criteria || 1), tokens);
+    /**
+     * Creates a new instance of this model, the first save will emit the `onSaveEvent` event, thereafter it will be
+     * an update.
+     *
+     * @param {Object} data
+     * @param {string} onSaveEvent
+     * @returns {Object}
+     */
+    Model.prototype._build = function(data, onSaveEvent) {
+        if (!this._instanceFactory) {
+            this._instanceFactory = new InstanceBuilder(this.columnsStore);
+        }
+
+        var model = this;
+        var event = onSaveEvent;
+
+        return this._instanceFactory.create(data).on('save', function (changes, onSave) {
+            model.emit(event, this, changes, onSave);
+            this.commitChanges();
+            event = Model.UPDATE_EVENT;
+        });
     };
 
     /**
@@ -231,18 +263,7 @@
      * @returns {Object}
      */
     Model.prototype.create = function(data) {
-        if (!this._instanceFactory) {
-            this._instanceFactory = new InstanceBuilder(this.columnsStore);
-        }
-
-        var model = this;
-        var event = 'create';
-
-        return this._instanceFactory.create(data || {}).on('save', function (changes, onSave) {
-            model.emit(event, this, changes, onSave);
-            this.commitChanges();
-            event = 'update';
-        });
+        return this._build(data || {}, Model.CREATE_EVENT);
     };
 
     /**
@@ -260,5 +281,9 @@
 
         return this._keyField;
     };
+
+    Model.UPDATE_EVENT = 'update';
+
+    Model.CREATE_EVENT = 'create';
 
 }());

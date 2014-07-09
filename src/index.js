@@ -37,9 +37,7 @@
     DMod.prototype.register = function() {
         var promises = [].map.call(arguments, this._registerModel, this);
 
-        Q.all(promises).then(function () {
-            this.emit('ready');
-        }.bind(this));
+        Q.all(promises).then(this.emit.bind(this, 'ready'));
 
         Object.keys(this._models).forEach(function (tableName) {
             this[tableName].associate(this);
@@ -58,8 +56,10 @@
         this._models[model.tableName] = model;
         this['create' + model.name] = this.create.bind(this, model);
 
-        model.on('create', this._adapter.createRecord.bind(this._adapter, model));
-        model.on('update', this._adapter.updateRecord.bind(this._adapter, model));
+        model.on('create',  this._adapter.createRecord.bind(this._adapter, model));
+        model.on('update',  this._adapter.updateRecord.bind(this._adapter, model));
+        model.on('one',     this._adapter.findRecord.bind(this._adapter, model));
+        model.on('all',     this._adapter.findRecords.bind(this._adapter, model));
 
         return this._adapter.create(model);
     };

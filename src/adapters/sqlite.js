@@ -24,13 +24,12 @@
     /**
      * Creates the table associated with a model
      * @param {DMod.Model} model
+     * @return {Q.Promise}
      */
     SQLite.prototype.create = function (model) {
-        this._database.serialize(function () {
-            this._run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
+        return this._run(merge('CREATE TABLE IF NOT EXISTS `%s` (%s)',
                 model.tableName,
-                model.columnsStore.toSql()));
-        }.bind(this));
+                model.columnsStore.toSql())).then(function () { return model; });
     };
 
     /**
@@ -210,6 +209,14 @@
         });
 
         return deferred.promise;
+    };
+
+    SQLite.prototype.findRecord = function() {
+
+    };
+
+    SQLite.prototype.findRecords = function(model, criteria, then) {
+        // TODO: build the statement, run the statement, return the raw data.
     };
 
 }());
