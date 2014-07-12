@@ -1,0 +1,8 @@
+.git/
+.idea/
+node_modules/
+test/example/
+
+.DS_Store
+*.db
+*.log

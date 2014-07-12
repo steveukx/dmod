@@ -20,6 +20,8 @@
     "sqlite3": "^2.2.3"
   },
   "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-release-steps": "^0.3.7",
     "unit-test": "0.0.9"
   },
   "scripts": {
