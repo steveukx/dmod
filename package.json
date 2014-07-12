@@ -9,15 +9,15 @@
     }
   ],
   "version": "0.0.1",
-  "main": "./src/unit-test.js",
+  "main": "./src/index.js",
   "repository": "git://github.com/steveukx/dmod.git",
   "bin": {},
   "engines": {
     "node": ">= 0.6.0"
   },
   "dependencies": {
-    "readdir": "0.0.12",
-    "q": "^1.0.1"
+    "q": "^1.0.1",
+    "sqlite3": "^2.2.3"
   },
   "devDependencies": {
     "unit-test": "0.0.9"
