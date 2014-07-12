@@ -26,8 +26,13 @@ models.on('ready', function () {
         });
 
         task.save(function () {
-            console.log(JSON.stringify(task));
+            console.log('Saved Task: ', JSON.stringify(task));
         });
+
+
+        models.findUserById(1).then(function (user) {
+            console.log('Found User: ', JSON.stringify(user));
+        })
     };
 
     var user = models.createUser({

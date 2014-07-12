@@ -165,10 +165,7 @@
             query = merge.apply(this, args);
         }
 
-        console.log('%s;', query);
-        if (queryParams && queryParams.length) {
-            console.log('  > ' + queryParams.join('\n  > '));
-        }
+        this._logQuery(query, queryParams);
 
         this._database.run(query, queryParams, function (err) {
             if (onDone) {
@@ -215,8 +212,38 @@
 
     };
 
-    SQLite.prototype.findRecords = function(model, criteria, then) {
-        // TODO: build the statement, run the statement, return the raw data.
+    /**
+     * Finds al matching records for the search term and calls back to the `then` handler.
+     *
+     * @param {DMod.Model} model
+     * @param {Object} search
+     * @param {Function} then
+     */
+    SQLite.prototype.findRecords = function(model, search, then) {
+        var params = [];
+        var criteria = Object.keys(search).map(function (fieldName) {
+            params.push(search[fieldName]);
+            return merge('`%s` = ?', fieldName);
+        });
+
+        var sql = merge('select * from `%s` where %s', model.tableName, criteria.join(', '));
+
+        this._logQuery(sql, params);
+        this._database.all(sql, params, function (err, rows) {
+            then(err, rows);
+        });
     };
+
+    /**
+     * Prints to the log - to enable logging, add 'dmod' to the NODE_DEBUG environment variable
+     * @function
+     */
+    SQLite.prototype._logQuery = process.env.NODE_DEBUG && process.env.NODE_DEBUG.toLowerCase().indexOf('dmod') >= 0 ?
+        function(query, queryParams) {
+            console.log('%s;', query);
+            if (queryParams && queryParams.length) {
+                console.log('  > ' + queryParams.join('\n  > '));
+            }
+        } : function () {};
 
 }());

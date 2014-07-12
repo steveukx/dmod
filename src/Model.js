@@ -195,9 +195,12 @@
     /**
      * Finds the item with the supplied ID.
      * @param {string|number} id
+     * @return {Q.promise}
      */
-    Model.prototype.find = function (id) {
-        return this.by({id: id});
+    Model.prototype.id = function (id) {
+        return this.find({id: id}).then(function (rows) {
+            return rows[0] || null;
+        });
     };
 
     /**
@@ -205,7 +208,7 @@
      * @param {object} search
      * @return {Q.promise}
      */
-    Model.prototype.by = function(search) {
+    Model.prototype.find = function(search) {
         var model = this;
         var columns = this.columnsStore;
         var criteria = Object.keys(search).reduce(function (criteria, fieldName) {
@@ -223,10 +226,9 @@
                 deferred.reject(err);
             }
             else {
-                [].concat(res).map(function (data) {
-                    return model._build(data, Model.UPDATE_EVENT);
-                });
-                deferred.resolve(res);
+                deferred.resolve([].concat(res).map(function (data) {
+                    return model._build(data, Model.UPDATE_EVENT).commitChanges();
+                }));
             }
         });
         return deferred.promise;

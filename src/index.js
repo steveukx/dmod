@@ -56,6 +56,9 @@
         this._models[model.tableName] = model;
         this['create' + model.name] = this.create.bind(this, model);
 
+        this['find' + model.name] = model.find.bind(model);
+        this['find' + model.name + 'ById'] = model.id.bind(model);
+
         model.on('create',  this._adapter.createRecord.bind(this._adapter, model));
         model.on('update',  this._adapter.updateRecord.bind(this._adapter, model));
         model.on('one',     this._adapter.findRecord.bind(this._adapter, model));
