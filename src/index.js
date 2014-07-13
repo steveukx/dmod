@@ -30,12 +30,14 @@
     };
 
     /**
-     * Registers any number of tables supplied as instances of `DMod.Model`.
+     * Registers any number of tables supplied as instances of `DMod.Model` by either supplying model instances
+     * as varargs or as a single array of models.
      *
      * @returns {DMod}
      */
     DMod.prototype.register = function() {
-        var promises = [].map.call(arguments, this._registerModel, this);
+        var models = arguments.length === 1 && Array.isArray(arguments[0]) ? arguments[0] : arguments;
+        var promises = [].map.call(models, this._registerModel, this);
 
         Q.all(promises).then(this.emit.bind(this, 'ready'));
 
