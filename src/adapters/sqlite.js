@@ -222,8 +222,27 @@
     SQLite.prototype.findRecords = function(model, search, then) {
         var params = [];
         var criteria = Object.keys(search).map(function (fieldName) {
-            params.push(search[fieldName]);
-            return merge('`%s` = ?', fieldName);
+            var query = '';
+
+            if (typeof search[fieldName] === 'string') {
+                params.push(search[fieldName]);
+                query += merge('`%s` = ?', fieldName);
+            }
+            else {
+                Object.keys(search[fieldName]).forEach(function (searchType) {
+                    switch (searchType) {
+                        case 'like':
+                            params.push(search[fieldName]);
+                            query += merge('`%s` like ?', fieldName);
+                            break;
+
+                        default:
+                            throw new SyntaxError('Bad search type: ' + searchType);
+                    }
+                });
+            }
+
+            return query;
         });
 
         var sql = merge('select * from `%s` where %s', model.tableName, criteria.join(', '));
